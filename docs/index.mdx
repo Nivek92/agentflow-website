@@ -1,0 +1,115 @@
+---
+sidebar_position: 0
+---
+
+import CodeBlock from "@theme/CodeBlock";
+
+# Quickstart
+
+AgentFlow is a lightweight, event-driven framework designed for building and managing multi-agent systems.
+
+In this short guide you'll learn everything you need to know to get started quickly.
+
+## Core Components
+
+Before we dive into specifics, lets first understand the core components in AgentFlow:
+
+**Event**: Events are data transfer objects that define the information sent between different *actors*.
+
+**Actor**: Actors are triggered by *events*. They can be simple functions or complex agents. 
+
+**Event Emitter**: Event Emitters manage event listeners and broadcast events to them.
+
+## Installation
+
+To use AgentFlow, we first need to install it. 
+
+To install AgentFlow run:
+
+<CodeBlock language="python">pip install agentflow</CodeBlock>
+
+## Your First Scenario
+
+Let's walk through a simple example that teaches you how to use AgentFlow. By the end, you'll have a basic understanding of how you can use AgentFlow to create your own multi-agent systems.
+
+### Step 1: Create The Events
+
+Let's start by creating the events that will be send to and from the actor.
+
+First we create the SumRequestEvent which we will use to trigger the actor and pass it our input values. 
+
+```
+  class SumRequestEvent(AbstractEvent):
+    name: str = "sum_request_event"
+    description: str ="Request the sum of numbers"
+
+    a: int
+    b: int
+```
+
+Next we create the SumResponseEvent which we will use to get the result back from the actor. 
+
+```
+  class SumResponseEvent(AbstractEvent):
+    name: str = "sum_response_event"
+    description: str ="Result of an addition"
+
+    sum: int
+```
+
+### Step 2: Create The Actor
+
+Now we create the SumActor that will take two numbers and calculate their sum.
+
+```
+  class SumActor(AbstractActor):
+    name: str = "sum_actor"
+    trigger_event: Type[AbstractEvent] = SumRequestEvent
+
+    def _handle_event(self, event: SumRequestEvent):
+      # Extract numbers from the event payload
+      result = event.a + event.b
+      
+      # Create and emit a response event
+      response_event = SumResponseEvent(sum=result)
+      self._event_emitter.emit(response_event)
+```
+
+As you can see, we give it a name and define the event it will listen to. Inside the _handle_event method we then implement the logic to process the event and return the final result.
+While in this example the logic is deterministic, not using an LLM, this is where you can design whatever you like.
+You can emit new events to trigger other more complex actors, process their responses and then return the final result.
+
+### Step 3: Put everything together
+
+Now that we have our events and actor define, we can put everything together.
+
+All we have to do now is create an *EventEmitter*, create an instance of our *Actor* and inject the *EventEmitter*.
+Then we are ready to emit the *SumRequestEvent* to trigger our *Actor*.
+
+```
+with EventEmitter() as event_emitter:
+  sum_actor = SumActor(event_emitter=event_emitter)
+  event_emitter.emit(SumRequestEvent(a=4, b=8))
+```
+
+Now you might wonder, why nothing happens.
+To change that let's register a basic logger that comes with AgentFlow printing all events and a function that prints the final result.
+
+
+```
+def return_response_to_user(event: SumResponseEvent):
+	print(event.sum)
+
+with EventEmitter() as event_emitter:
+	event_emitter.on_all(Logger.log_event)
+	event_emitter.on(SumResponseEvent, return_response_to_user)
+
+	sum_actor = SumActor(event_emitter=event_emitter)
+	event_emitter.emit(SumRequestEvent(a=4, b=8))
+```
+
+## Delve Deeper
+That's it. You just built your first scenario using AgentFlow. As you can see AgentFlow is extremely simple to use.
+If you want to delve into more complex scenarios, check out our [examples](https://github.com/NiVeK92/agentflow/blob/main/examples).
+
+
